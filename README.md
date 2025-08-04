@@ -255,17 +255,4 @@ The application fully satisfies all requirements:
 - Integration testing for API calls
 - Manual testing for notification flows
 
-## 🎥 Demo Video
-
-**Loom Video**: [Add your Loom video link here]
-
-_Video demonstrates:_
-
-- Google Authentication flow
-- Email/password authentication
-- Appointment booking process
-- Push notification setup
-- State persistence after app restart
-- Timezone switching functionality
-
 **Ready for demonstration and testing!** 🚀
