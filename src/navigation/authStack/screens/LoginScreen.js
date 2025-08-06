@@ -28,7 +28,6 @@ export default function LoginScreen({navigation}) {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [user, setUser] = useMMKVStorage('user', Storage);
 
   useEffect(() => {
@@ -204,26 +203,6 @@ export default function LoginScreen({navigation}) {
                 secureTextEntry
                 error={errors.password}
               />
-
-              {/* Remember Me & Forgot Password */}
-              <View style={styles.optionsRow}>
-                <TouchableOpacity
-                  style={styles.rememberContainer}
-                  onPress={() => setRememberMe(!rememberMe)}>
-                  <View
-                    style={[
-                      styles.checkbox,
-                      rememberMe && styles.checkboxChecked,
-                    ]}>
-                    {rememberMe && <Text style={styles.checkIcon}>✓</Text>}
-                  </View>
-                  <Text style={styles.rememberText}>Remember me</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity>
-                  <Text style={styles.forgotText}>Forgot Password?</Text>
-                </TouchableOpacity>
-              </View>
 
               <CustomButton
                 title="Sign In"

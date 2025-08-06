@@ -1,4 +1,5 @@
 import Storage from './Storage';
+import {setHours, setMinutes, startOfDay, isBefore, isAfter} from 'date-fns';
 
 class AppointmentManager {
   constructor() {
@@ -233,10 +234,35 @@ class AppointmentManager {
         };
       }
 
+      // Create full appointment datetime including both date and time
       const aptDate = new Date(userAppointment.date);
+      let appointmentDateTime = aptDate;
+
+      // If appointment has a timeSlot, include it in the comparison
+      if (userAppointment.timeSlot) {
+        try {
+          const [hour, minute] = userAppointment.timeSlot
+            .split(':')
+            .map(Number);
+          if (!isNaN(hour) && !isNaN(minute)) {
+            appointmentDateTime = setHours(
+              setMinutes(startOfDay(aptDate), minute),
+              hour,
+            );
+          }
+        } catch (timeError) {
+          console.error('Error parsing appointment time:', timeError);
+          // Fallback to date-only comparison if time parsing fails
+          appointmentDateTime = aptDate;
+        }
+      }
+
       const isUpcoming =
-        aptDate > now && userAppointment.status === 'confirmed';
-      const isPast = aptDate < now && userAppointment.status === 'confirmed';
+        isAfter(appointmentDateTime, now) &&
+        userAppointment.status === 'confirmed';
+      const isPast =
+        isBefore(appointmentDateTime, now) &&
+        userAppointment.status === 'confirmed';
 
       const stats = {
         hasAppointment: true,

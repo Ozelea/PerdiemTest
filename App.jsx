@@ -11,7 +11,7 @@ export default function App() {
 
   useEffect(() => {
     // Initialize notification service when app starts
-    NotificationService;
+    NotificationService.initializeNotifications();
   }, []);
 
   return (

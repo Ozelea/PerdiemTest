@@ -7,53 +7,22 @@ import {
   StyleSheet,
 } from 'react-native';
 import Colors from '../utils/Colors';
+import {
+  generateUpcomingDates,
+  getDateLabel,
+  TIME_ZONES,
+} from '../utils/DateTimeUtils';
 
 const DatePicker = ({
   selectedDate,
   onDateSelect,
-  timezone = 'America/New_York',
+  timezone = TIME_ZONES.NYC,
 }) => {
-  // Generate next 30 days based on the selected timezone
-  const getDatesForNext30Days = () => {
-    const dates = [];
-    const now = new Date();
-
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(now);
-      date.setDate(now.getDate() + i);
-      dates.push(date);
-    }
-
-    return dates;
-  };
+  const dates = generateUpcomingDates(30);
 
   const formatDate = date => {
-    const now = new Date();
-    const today = new Date(now);
-    const tomorrow = new Date(now);
-    tomorrow.setDate(today.getDate() + 1);
-
-    // Compare dates by their date string to avoid timezone issues
-    const dateStr = date.toDateString();
-    const todayStr = today.toDateString();
-    const tomorrowStr = tomorrow.toDateString();
-
-    if (dateStr === todayStr) {
-      return 'Today';
-    } else if (dateStr === tomorrowStr) {
-      return 'Tomorrow';
-    } else {
-      return date && date.toLocaleDateString
-        ? date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-          })
-        : 'Invalid Date';
-    }
+    return getDateLabel(date, timezone);
   };
-
-  const dates = getDatesForNext30Days();
 
   return (
     <View style={styles.dateSection}>

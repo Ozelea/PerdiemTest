@@ -1,12 +1,19 @@
 import React, {useState, useEffect} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
+import {getDay, getDate, getMonth} from 'date-fns';
 import Colors from '../utils/Colors';
 import {
   getStoreTimesWithFallback,
   getStoreOverridesWithFallback,
 } from '../utils/APIController';
+import {
+  isStoreCurrentlyOpen,
+  getNextStoreOpening,
+  formatTimeInTimezone,
+  TIME_ZONES,
+} from '../utils/DateTimeUtils';
 
-const StoreStatus = ({timezone = 'America/New_York'}) => {
+const StoreStatus = ({timezone = TIME_ZONES.NYC}) => {
   const [storeTimes, setStoreTimes] = useState([]);
   const [storeOverrides, setStoreOverrides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,148 +40,89 @@ const StoreStatus = ({timezone = 'America/New_York'}) => {
     }
   };
 
-  const isStoreOpen = () => {
-    if (loading || storeTimes.length === 0) return false;
+  const getStoreHoursForToday = () => {
+    if (loading || storeTimes.length === 0) return null;
 
-    // Get current time in the selected timezone
     const now = new Date();
-    const timeInTimezone = now.toLocaleString('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    const dayOfWeek = getDay(now);
+    const currentDay = getDate(now);
+    const currentMonth = getMonth(now) + 1;
 
-    // Get current day of week (0 = Sunday, 1 = Monday, etc.)
-    const dayOfWeek = new Date(
-      now.toLocaleString('en-US', {timeZone: timezone}),
-    ).getDay();
-
-    // Get current date
-    const currentDate = new Date(
-      now.toLocaleString('en-US', {timeZone: timezone}),
-    );
-    const currentDay = currentDate.getDate();
-    const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
-
-    // Check for date-specific overrides first
+    // Check for overrides first
     const override = storeOverrides.find(
       override =>
         override.day === currentDay && override.month === currentMonth,
     );
 
     if (override) {
-      if (!override.is_open) return false;
-      if (
-        override.start_time &&
-        override.end_time &&
-        override.start_time.trim() &&
-        override.end_time.trim()
-      ) {
-        return (
-          timeInTimezone >= override.start_time &&
-          timeInTimezone <= override.end_time
-        );
-      }
-      return false;
+      return {
+        is_open: override.is_open,
+        start_time: override.start_time,
+        end_time: override.end_time,
+        is_override: true,
+      };
     }
 
-    // Check regular store hours for current day of week
+    // Regular hours
     const todayHours = storeTimes.find(
       storeTime => storeTime.day_of_week === dayOfWeek,
     );
 
-    if (!todayHours || !todayHours.is_open) return false;
-
-    // Check if current time is within store hours (with safety checks)
-    if (
-      todayHours.start_time &&
-      todayHours.end_time &&
-      todayHours.start_time.trim() &&
-      todayHours.end_time.trim()
-    ) {
-      return (
-        timeInTimezone >= todayHours.start_time &&
-        timeInTimezone <= todayHours.end_time
-      );
+    if (!todayHours) {
+      return {is_open: false, start_time: null, end_time: null};
     }
 
-    return false;
+    return {
+      is_open: todayHours.is_open,
+      start_time: todayHours.start_time,
+      end_time: todayHours.end_time,
+      is_override: false,
+    };
   };
 
-  const getTodayHours = () => {
-    if (loading || storeTimes.length === 0) return 'Loading...';
+  const storeHours = getStoreHoursForToday();
+  const isOpen = storeHours
+    ? isStoreCurrentlyOpen(storeHours, timezone)
+    : false;
 
-    const now = new Date();
-    const dayOfWeek = new Date(
-      now.toLocaleString('en-US', {timeZone: timezone}),
-    ).getDay();
-
-    // Get current date for override check
-    const currentDate = new Date(
-      now.toLocaleString('en-US', {timeZone: timezone}),
-    );
-    const currentDay = currentDate.getDate();
-    const currentMonth = currentDate.getMonth() + 1;
-
-    // Check for date-specific overrides first
-    const override = storeOverrides.find(
-      override =>
-        override.day === currentDay && override.month === currentMonth,
-    );
-
-    if (override) {
-      if (!override.is_open) return 'Closed (Holiday/Special Day)';
-      return `${formatTime(override.start_time)} - ${formatTime(
-        override.end_time,
-      )} (Special Hours)`;
+  const getHoursDisplay = () => {
+    if (loading) return 'Loading...';
+    if (!storeHours || !storeHours.is_open) {
+      return storeHours?.is_override
+        ? 'Closed (Holiday/Special Day)'
+        : 'Closed';
     }
 
-    // Check regular store hours
-    const todayHours = storeTimes.find(
-      storeTime => storeTime.day_of_week === dayOfWeek,
+    const startTime = formatTimeInTimezone(
+      new Date(`2000-01-01T${storeHours.start_time}:00`),
+      timezone,
+    );
+    const endTime = formatTimeInTimezone(
+      new Date(`2000-01-01T${storeHours.end_time}:00`),
+      timezone,
     );
 
-    if (!todayHours || !todayHours.is_open) return 'Closed';
-
-    return `${formatTime(todayHours.start_time)} - ${formatTime(
-      todayHours.end_time,
-    )}`;
-  };
-
-  const formatTime = timeString => {
-    if (!timeString) return '';
-    const [hour, minute] = timeString.split(':');
-    let displayHour = parseInt(hour);
-    let ampm = 'AM';
-
-    if (displayHour >= 12) {
-      ampm = 'PM';
-      if (displayHour > 12) displayHour = displayHour - 12;
-    }
-    if (displayHour === 0) displayHour = 12;
-
-    return `${displayHour}:${minute} ${ampm}`;
+    const suffix = storeHours.is_override ? ' (Special Hours)' : '';
+    return `${startTime} - ${endTime}${suffix}`;
   };
 
   return (
     <View style={styles.storeSection}>
       <Text style={styles.sectionTitle}>
-        Store Status (
-        {timezone === 'America/New_York' ? 'NYC Time' : 'Local Time'})
+        Store Status ({timezone === TIME_ZONES.NYC ? 'NYC Time' : 'Local Time'})
       </Text>
       <View style={styles.storeStatus}>
         <View
           style={[
             styles.statusLight,
-            {backgroundColor: isStoreOpen() ? Colors.success : Colors.error},
+            {backgroundColor: isOpen ? Colors.success : Colors.error},
           ]}
         />
         <Text style={styles.statusText}>
-          Store is {isStoreOpen() ? 'Open' : 'Closed'}
+          Store is {isOpen ? 'Open' : 'Closed'}
         </Text>
       </View>
-      <Text style={styles.hoursText}>Today's Hours: {getTodayHours()}</Text>
+      <Text style={styles.hoursText}>Today's Hours: {getHoursDisplay()}</Text>
     </View>
   );
 };

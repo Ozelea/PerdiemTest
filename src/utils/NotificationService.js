@@ -1,6 +1,19 @@
 import {Alert, Platform} from 'react-native';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
+import {addMinutes, getTime, format} from 'date-fns';
 import Storage from './Storage';
+import {
+  createAppointmentBookedNotification,
+  createAppointmentReminderNotification,
+  createSystemNotification,
+  createNativeNotificationPayload,
+} from './NotificationUtils';
+import {
+  getCurrentTimeInTimezone,
+  getNextStoreOpening,
+  formatTimeInTimezone,
+  TIME_ZONES,
+} from './DateTimeUtils';
 
 class NotificationService {
   constructor() {
@@ -51,8 +64,15 @@ class NotificationService {
   }
 
   scheduleNotification(title, message, delayInMinutes = 0) {
+    console.log('🔔 scheduleNotification called:', {
+      title,
+      message,
+      delayInMinutes,
+    });
+
     if (Platform.OS === 'ios') {
-      const fireDate = new Date(Date.now() + delayInMinutes * 60 * 1000);
+      const fireDate = addMinutes(new Date(), delayInMinutes);
+      console.log('📱 iOS notification scheduled for:', fireDate.toISOString());
 
       PushNotificationIOS.scheduleLocalNotification({
         alertTitle: title,
@@ -65,6 +85,7 @@ class NotificationService {
           scheduledAt: new Date().toISOString(),
         },
       });
+      console.log('✅ iOS notification scheduled successfully');
     } else {
       // Fallback to Alert for non-iOS platforms during development
       setTimeout(() => {
@@ -111,47 +132,77 @@ class NotificationService {
   }
 
   // Schedule store opening notification (1 hour before store opens)
-  async scheduleStoreOpeningNotification(timezone = 'America/New_York') {
+  async scheduleStoreOpeningNotification(timezone = TIME_ZONES.NYC) {
     try {
-      // Calculate time until 1 hour before next store opening (8 AM for 9 AM opening)
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(8, 0, 0, 0); // 8 AM (1 hour before 9 AM opening)
+      console.log(
+        '🔔 NotificationService.scheduleStoreOpeningNotification called',
+      );
+      console.log('🌐 Timezone:', timezone);
 
-      const delayInMinutes = (tomorrow.getTime() - now.getTime()) / (1000 * 60);
+      const storeHours = {
+        is_open: true,
+        start_time: '09:00',
+        end_time: '17:00',
+      };
+      console.log('🏪 Store hours:', storeHours);
+
+      const nextOpening = getNextStoreOpening(storeHours, timezone);
+      console.log('⏰ Next opening calculated:', nextOpening);
+
+      if (!nextOpening) {
+        console.log('❌ Could not determine next store opening time');
+        return {
+          success: false,
+          message: 'Could not determine next store opening time',
+        };
+      }
+
+      const now = getCurrentTimeInTimezone(timezone);
+      console.log('🕐 Current time in timezone:', now);
+
+      const notificationTime = addMinutes(nextOpening, -60); // 1 hour before
+      console.log('📅 Notification time calculated:', notificationTime);
+
+      const delayInMinutes =
+        (getTime(notificationTime) - getTime(now)) / (1000 * 60);
+      console.log('⏱️ Delay in minutes:', delayInMinutes);
 
       if (delayInMinutes > 0) {
+        const notification = createSystemNotification(
+          `The store will open in 1 hour at ${formatTimeInTimezone(
+            nextOpening,
+            timezone,
+          )}. Get ready to book your appointment!`,
+        );
+        console.log('📨 Notification created:', notification);
+
         this.scheduleNotification(
-          'Store Opening Soon!',
-          'The store will open in 1 hour at 9 AM. Get ready to book your appointment!',
+          notification.title,
+          notification.body,
           delayInMinutes,
         );
+        console.log('✅ Notification scheduled successfully');
 
-        // Store the scheduled notification in MMKV
         Storage.setString(
           'lastScheduledNotification',
           new Date().toISOString(),
         );
 
-        const storeOpeningTime = new Date(tomorrow);
-        storeOpeningTime.setHours(9, 0, 0, 0); // Actual store opening at 9 AM
-
         return {
           success: true,
-          notificationTime: new Date(
-            now.getTime() + delayInMinutes * 60 * 1000,
-          ).toISOString(),
-          storeOpeningTime: storeOpeningTime.toISOString(),
+          notificationTime: notificationTime.toISOString(),
+          storeOpeningTime: nextOpening.toISOString(),
           message: 'Store opening notification scheduled 1 hour before opening',
         };
       } else {
+        console.log('⚠️ Notification time has already passed for today');
         return {
           success: false,
           message: 'Notification time has already passed for today',
         };
       }
     } catch (error) {
+      console.error('🚨 scheduleStoreOpeningNotification error:', error);
       return {
         success: false,
         message: 'Failed to schedule store opening notification',
@@ -166,23 +217,22 @@ class NotificationService {
       const appointmentDateTime = new Date(
         `${appointmentDate} ${appointmentTime}`,
       );
-      const reminderTime = new Date(
-        appointmentDateTime.getTime() - 30 * 60 * 1000,
-      ); // 30 minutes before
-      const now = new Date();
+      const reminderTime = addMinutes(appointmentDateTime, -30);
+      const now = getCurrentTimeInTimezone();
 
       if (reminderTime > now) {
         const delayInMinutes =
-          (reminderTime.getTime() - now.getTime()) / (1000 * 60);
+          (getTime(reminderTime) - getTime(now)) / (1000 * 60);
+
+        const notification = createAppointmentReminderNotification({
+          date: appointmentDate,
+          timeSlot: appointmentTime,
+        });
 
         this.scheduleNotification(
-          'Appointment Reminder',
-          `Your appointment is in 30 minutes at ${appointmentTime}. Don't forget!`,
+          notification.title,
+          notification.body,
           delayInMinutes,
-        );
-
-        console.log(
-          `Appointment reminder scheduled for ${delayInMinutes} minutes from now`,
         );
 
         return {
@@ -197,7 +247,6 @@ class NotificationService {
         };
       }
     } catch (error) {
-      console.error('Error scheduling appointment reminder:', error);
       return {
         success: false,
         message: 'Failed to schedule appointment reminder',
@@ -210,9 +259,6 @@ class NotificationService {
   cancelAllNotifications() {
     if (Platform.OS === 'ios') {
       PushNotificationIOS.cancelAllLocalNotifications();
-      console.log('All system notifications cancelled');
-    } else {
-      console.log('Notifications cleared (non-iOS platform)');
     }
   }
 
