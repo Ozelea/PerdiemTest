@@ -10,13 +10,13 @@ import Colors from '../utils/Colors';
 import {
   generateUpcomingDates,
   getDateLabel,
-  TIME_ZONES,
+  SUPPORTED_TIMEZONES,
 } from '../utils/DateTimeUtils';
 
 const DatePicker = ({
   selectedDate,
   onDateSelect,
-  timezone = TIME_ZONES.NYC,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
 }) => {
   const dates = generateUpcomingDates(30);
 

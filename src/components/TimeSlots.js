@@ -7,12 +7,12 @@ import {
 } from '../utils/APIController';
 import AppointmentManager from '../utils/AppointmentManager';
 import {
-  generateTimeSlots,
+  createBookingTimeSlots,
   isTimeSlotPast,
   formatTimeSlotDisplay,
   formatTimeInTimezone,
-  TIME_INTERVALS,
-  TIME_ZONES,
+  SLOT_INTERVALS,
+  SUPPORTED_TIMEZONES,
 } from '../utils/DateTimeUtils';
 
 const TimeSlots = ({
@@ -148,10 +148,10 @@ const TimeSlots = ({
       `🎯 Generating time slots from ${storeHours.start_time} to ${storeHours.end_time} for timezone: ${timezone}`,
     );
 
-    const slots = generateTimeSlots(
+    const slots = createBookingTimeSlots(
       storeHours.start_time,
       storeHours.end_time,
-      TIME_INTERVALS.MINUTES_15,
+      SLOT_INTERVALS.QUARTER_HOUR,
       timezone,
     );
 
@@ -233,10 +233,10 @@ const TimeSlots = ({
     }
 
     // Generate all possible slots regardless of availability
-    const allSlots = generateTimeSlots(
+    const allSlots = createBookingTimeSlots(
       storeHours.start_time,
       storeHours.end_time,
-      TIME_INTERVALS.MINUTES_15,
+      SLOT_INTERVALS.QUARTER_HOUR,
       timezone,
     );
 
@@ -302,7 +302,7 @@ const TimeSlots = ({
       <Text style={styles.sectionTitle}>
         Available Time Slots (NYC Store Hours)
         <Text style={styles.timezoneNote}>
-          {timezone !== TIME_ZONES.NYC &&
+          {timezone !== SUPPORTED_TIMEZONES.NEW_YORK &&
             '\nTimes in NYC timezone - converted to your local time when confirmed'}
         </Text>
       </Text>

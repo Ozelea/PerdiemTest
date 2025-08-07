@@ -1,28 +1,114 @@
+import axios from 'axios';
 import Storage from './Storage';
 
 const BASE_URL = 'https://coding-challenge-pd-1a25b1a14f34.herokuapp.com/';
 
+// Create axios instance with default configuration
+const apiClient = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+  timeout: 10000, // 10 seconds timeout
+});
+
+// Request interceptor to add authentication token
+apiClient.interceptors.request.use(
+  config => {
+    // Get token from storage or passed parameter
+    const token = config.token || Storage.getString('authToken');
+    if (token) {
+      config.headers.authorization = token;
+    }
+
+    // Remove custom token property to avoid sending it in the request
+    delete config.token;
+
+    // Handle FormData content type
+    if (config.data instanceof FormData) {
+      config.headers['Content-Type'] = 'multipart/form-data';
+    }
+
+    // Log request in development
+    if (__DEV__) {
+      console.log(
+        `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`,
+        {
+          headers: config.headers,
+          data: config.data,
+        },
+      );
+    }
+
+    return config;
+  },
+  error => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  },
+);
+
+// Response interceptor for error handling and logging
+apiClient.interceptors.response.use(
+  response => {
+    // Log successful responses in development
+    if (__DEV__) {
+      console.log(
+        `✅ API Success: ${response.config.method?.toUpperCase()} ${
+          response.config.url
+        }`,
+        {
+          status: response.status,
+          data: response.data,
+        },
+      );
+    }
+    return response;
+  },
+  error => {
+    // Log errors in development
+    if (__DEV__) {
+      console.error(
+        `❌ API Error: ${error.config?.method?.toUpperCase()} ${
+          error.config?.url
+        }`,
+        {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message,
+        },
+      );
+    }
+
+    // Handle different error scenarios
+    if (error.response) {
+      // Server responded with error status
+      const {status, statusText} = error.response;
+
+      // Allow 400 and 500 errors to pass through (as per original implementation)
+      if (status === 400 || status === 500) {
+        return Promise.resolve(error.response);
+      }
+
+      throw new Error(statusText || `Request failed with status ${status}`);
+    } else if (error.request) {
+      // Request was made but no response received
+      throw new Error('Network error - no response received');
+    } else {
+      // Something else happened
+      throw new Error(error.message || 'Request failed');
+    }
+  },
+);
+
 const getRequest = async (endPoint, token = false) => {
   try {
-    const headers = {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    };
-
-    if (token) {
-      headers.authorization = token;
-    }
-
-    const response = await fetch(BASE_URL + endPoint, {
-      method: 'GET',
-      headers,
+    const response = await apiClient.get(endPoint, {
+      token, // Pass token as custom config property
     });
-
-    if (!response.ok) {
-      throw new Error(response.statusText || 'Request failed');
-    }
-
-    return response.json();
+    return response.data;
   } catch (error) {
     throw error;
   }
@@ -30,33 +116,55 @@ const getRequest = async (endPoint, token = false) => {
 
 const postRequest = async (endPoint, data, token = false, method = 'POST') => {
   try {
-    const headers = {
-      Accept: 'application/json',
-      'Content-Type':
-        data instanceof FormData ? 'multipart/form-data' : 'application/json',
+    const config = {
+      token, // Pass token as custom config property
     };
 
-    if (token) {
-      headers.authorization = token;
+    let response;
+    if (method.toLowerCase() === 'put') {
+      response = await apiClient.put(endPoint, data, config);
+    } else if (method.toLowerCase() === 'patch') {
+      response = await apiClient.patch(endPoint, data, config);
+    } else if (method.toLowerCase() === 'delete') {
+      response = await apiClient.delete(endPoint, config);
+    } else {
+      response = await apiClient.post(endPoint, data, config);
     }
 
-    const response = await fetch(BASE_URL + endPoint, {
-      method,
-      headers,
-      body: data instanceof FormData ? data : JSON.stringify(data),
-    });
-
-    if (!response.ok && response.status !== 500 && response.status !== 400) {
-      throw new Error(response.statusText || 'Request failed');
-    }
-
-    return response.json();
+    return response.data;
   } catch (error) {
     throw error;
   }
 };
 
 export {getRequest, postRequest};
+
+// Utility functions for API client management
+export const setAuthToken = token => {
+  if (token) {
+    Storage.setString('authToken', token);
+  } else {
+    Storage.removeItem('authToken');
+  }
+};
+
+export const getAuthToken = () => {
+  return Storage.getString('authToken');
+};
+
+export const clearAuthToken = () => {
+  Storage.removeItem('authToken');
+};
+
+// Function to update base URL if needed
+export const updateBaseURL = newBaseURL => {
+  apiClient.defaults.baseURL = newBaseURL;
+};
+
+// Function to update request timeout
+export const updateTimeout = timeout => {
+  apiClient.defaults.timeout = timeout;
+};
 
 export const getStoreTimes = async (token = false) => {
   try {
@@ -180,7 +288,7 @@ export const getStoreTimesWithFallback = async (
   try {
     return await getStoreTimes(token);
   } catch (error) {
-    console.log(TAG, 'API failed, using mock data for store times');
+    console.log('APIController: API failed, using mock data for store times');
     return getMockStoreTimes();
   }
 };
@@ -197,7 +305,9 @@ export const getStoreOverridesWithFallback = async (
   try {
     return await getStoreOverrides(token);
   } catch (error) {
-    console.log(TAG, 'API failed, using mock data for store overrides');
+    console.log(
+      'APIController: API failed, using mock data for store overrides',
+    );
     return getMockStoreOverrides();
   }
 };

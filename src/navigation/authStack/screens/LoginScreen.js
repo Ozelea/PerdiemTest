@@ -17,7 +17,7 @@ import CustomButton from '../../../components/CustomButton';
 import SocialButton from '../../../components/SocialButton';
 import Storage from '../../../utils/Storage';
 import {useMMKVStorage} from 'react-native-mmkv-storage';
-import {postRequest} from '../../../utils/APIController';
+import {postRequest, setAuthToken} from '../../../utils/APIController';
 import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 
@@ -82,6 +82,9 @@ export default function LoginScreen({navigation}) {
           name: 'User',
           token: response.token,
         };
+
+        // Store the auth token using the new utility function
+        setAuthToken(response.token);
 
         setUser(userData);
         Alert.alert('Success', response?.message || 'Logged in successfully!');

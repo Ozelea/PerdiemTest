@@ -1,6 +1,7 @@
 import {Alert, Platform} from 'react-native';
 import AppointmentManager from './AppointmentManager';
 import NotificationService from './NotificationService';
+import {clearAuthToken} from './APIController';
 import {
   formatTimeSlotDisplay,
   formatAppointmentDateTime,
@@ -63,6 +64,9 @@ export const handleUserLogout = ({onLogout}) => {
           // Clear any existing appointment
           AppointmentManager.clearUserAppointment();
 
+          // Clear authentication token
+          clearAuthToken();
+
           // Call the logout callback
           if (onLogout && typeof onLogout === 'function') {
             onLogout();
@@ -70,6 +74,7 @@ export const handleUserLogout = ({onLogout}) => {
         } catch (error) {
           console.error('Error during logout:', error);
           // Still proceed with logout even if clearing appointment fails
+          clearAuthToken(); // Ensure token is cleared even on error
           if (onLogout && typeof onLogout === 'function') {
             onLogout();
           }
@@ -89,7 +94,7 @@ export const handleTestNotificationFlow = async () => {
       return;
     }
 
-    const result = await NotificationService.testNotification();
+    const result = await NotificationService.showTestNotification();
 
     if (result.success) {
       Alert.alert('Success', 'Test notification sent!');
@@ -141,12 +146,16 @@ const processAppointmentBooking = async ({
     console.log('Booking appointment with data:', appointmentData);
 
     // Save the appointment
-    const success = AppointmentManager.setUserAppointment(appointmentData);
+    const result = AppointmentManager.saveAppointment(
+      appointmentData.date,
+      appointmentData.timeSlot,
+      appointmentData.timezone,
+    );
 
-    if (success) {
+    if (result.success) {
       // Update the UI
       if (onAppointmentUpdate && typeof onAppointmentUpdate === 'function') {
-        onAppointmentUpdate(appointmentData);
+        onAppointmentUpdate(result.appointment);
       }
 
       const formattedDateTime = formatAppointmentDateTime(
@@ -292,10 +301,16 @@ export const scheduleStoreOpeningNotification = async timezone => {
 export const setupNotificationSystem = async (timezone, scheduleCallback) => {
   try {
     if (Platform.OS === 'ios') {
-      return await NotificationService.setupNotifications(
-        timezone,
-        scheduleCallback,
-      );
+      // Request permissions first
+      await NotificationService.requestPermissions();
+      // Then execute the schedule callback
+      if (scheduleCallback && typeof scheduleCallback === 'function') {
+        return await scheduleCallback();
+      }
+      return {
+        status: 'success',
+        message: 'Notification system initialized',
+      };
     }
     return {
       status: 'not_supported',

@@ -1,6 +1,7 @@
 import {Alert, Platform} from 'react-native';
 import AppointmentManager from './AppointmentManager';
 import NotificationService from './NotificationService';
+import {clearAuthToken} from './APIController';
 import {
   formatTimeSlotDisplay,
   formatAppointmentDateTime,
@@ -57,6 +58,9 @@ export const handleUserLogout = ({onLogout}) => {
           // Clear any existing appointment
           AppointmentManager.clearUserAppointment();
 
+          // Clear authentication token
+          clearAuthToken();
+
           // Call the logout callback
           if (onLogout && typeof onLogout === 'function') {
             onLogout();
@@ -64,6 +68,7 @@ export const handleUserLogout = ({onLogout}) => {
         } catch (error) {
           console.error('Error during logout:', error);
           // Still proceed with logout even if clearing appointment fails
+          clearAuthToken(); // Ensure token is cleared even on error
           if (onLogout && typeof onLogout === 'function') {
             onLogout();
           }

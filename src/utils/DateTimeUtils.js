@@ -31,50 +31,52 @@ import {
 } from 'date-fns';
 import {enUS} from 'date-fns/locale';
 
-// Date and time utilities for the appointment system
-// Handles timezone conversions, formatting, and scheduling logic
+// Time and date management system for appointment scheduling
+// Comprehensive timezone handling and business logic utilities
 
-// Constants
-export const TIME_ZONES = {
-  NYC: 'America/New_York',
-  UTC: 'UTC',
-  LOCAL: Intl.DateTimeFormat().resolvedOptions().timeZone,
+// Application timezone constants
+export const SUPPORTED_TIMEZONES = {
+  NEW_YORK: 'America/New_York',
+  COORDINATED_UNIVERSAL: 'UTC',
+  USER_DEVICE: Intl.DateTimeFormat().resolvedOptions().timeZone,
 };
 
-export const DATE_FORMATS = {
-  DISPLAY_DATE: 'EEEE, MMMM d, yyyy',
-  SHORT_DATE: 'MMM d',
-  TIME_12H: 'h:mm a',
-  TIME_24H: 'HH:mm',
-  ISO_DATE: 'yyyy-MM-dd',
-  FULL_DATETIME: 'yyyy-MM-dd HH:mm:ss',
-  API_DATETIME: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+export const DISPLAY_FORMATS = {
+  LONG_DATE: 'EEEE, MMMM d, yyyy',
+  COMPACT_DATE: 'MMM d',
+  TWELVE_HOUR: 'h:mm a',
+  TWENTY_FOUR_HOUR: 'HH:mm',
+  ISO_STANDARD: 'yyyy-MM-dd',
+  COMPLETE_DATETIME: 'yyyy-MM-dd HH:mm:ss',
+  API_TIMESTAMP: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
 };
 
-export const TIME_INTERVALS = {
-  MINUTES_15: 15,
-  MINUTES_30: 30,
-  HOUR: 60,
+export const SLOT_INTERVALS = {
+  QUARTER_HOUR: 15,
+  HALF_HOUR: 30,
+  FULL_HOUR: 60,
 };
 
-export const DEFAULT_PREP_TIME_IN_MINUTES = 15;
+export const PREPARATION_TIME_DEFAULT = 15;
 
-export const BUSINESS_HOURS_CONFIG = {
-  DEFAULT_START: '09:00',
-  DEFAULT_END: '18:00',
-  PREP_TIME_MINUTES: 15,
-  SLOT_INTERVAL_MINUTES: 15,
+export const STORE_CONFIGURATION = {
+  OPENING_TIME: '09:00',
+  CLOSING_TIME: '18:00',
+  SETUP_DURATION: 15,
+  BOOKING_INTERVAL: 15,
 };
 
-// Core timezone utilities
+// Timezone-aware time retrieval utilities
 
-// Get current time in a specific timezone
-export const getCurrentTimeInTimezone = (timezone = TIME_ZONES.NYC) => {
+// Retrieve current moment in specified timezone
+export const getNowInTimezone = (
+  targetTimezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
   try {
-    // Create a date in the target timezone using toLocaleString
-    const now = new Date();
-    const timeString = now.toLocaleString('en-US', {
-      timeZone: timezone,
+    // Leverage browser/RN timezone API for accurate conversion
+    const currentMoment = new Date();
+    const timezoneString = currentMoment.toLocaleString('en-US', {
+      timeZone: targetTimezone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -84,55 +86,59 @@ export const getCurrentTimeInTimezone = (timezone = TIME_ZONES.NYC) => {
       hour12: false,
     });
 
-    // Parse the timezone-adjusted time string back to a Date object
-    const [datePart, timePart] = timeString.split(', ');
-    const [month, day, year] = datePart.split('/');
-    const [hour, minute, second] = timePart.split(':');
+    // Parse timezone-converted string back to Date object
+    const [dateSegment, timeSegment] = timezoneString.split(', ');
+    const [month, day, year] = dateSegment.split('/');
+    const [hour, minute, second] = timeSegment.split(':');
 
-    const result = new Date(
+    const timezoneAdjustedDate = new Date(
       parseInt(year),
-      parseInt(month) - 1, // months are 0-indexed
+      parseInt(month) - 1, // Zero-indexed months
       parseInt(day),
       parseInt(hour),
       parseInt(minute),
       parseInt(second),
     );
 
-    console.log('🕐 getCurrentTimeInTimezone:', {
-      timezone,
-      localTime: now.toLocaleString(),
-      timeString,
-      timezoneTime: result.toLocaleString(),
-      hour: getHours(result),
+    console.log('🕐 Timezone conversion details:', {
+      targetTimezone,
+      localTime: currentMoment.toLocaleString(),
+      timezoneString,
+      convertedTime: timezoneAdjustedDate.toLocaleString(),
+      extractedHour: getHours(timezoneAdjustedDate),
     });
 
-    return result;
+    return timezoneAdjustedDate;
   } catch (error) {
-    console.error('Error getting time in timezone:', error);
-    // Fallback to local time
+    console.error('Timezone conversion failed:', error);
+    // Safe fallback to system time
     return new Date();
   }
 };
 
-// Set time on a specific date
-export const setHmOnDate = (date, timeString, timeZone = TIME_ZONES.NYC) => {
-  if (!date || !timeString) return null;
+// Apply specific time to a date object
+export const applyTimeToDate = (
+  baseDate,
+  timeString,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
+  if (!baseDate || !timeString) return null;
 
   const [hours, minutes] = String(timeString).split(':').map(Number);
   if (isNaN(hours) || isNaN(minutes)) return null;
 
-  const result = setHours(
-    setMinutes(new Date(date), hours === 24 ? 59 : minutes),
+  const adjustedDate = setHours(
+    setMinutes(new Date(baseDate), hours === 24 ? 59 : minutes),
     hours === 24 ? 23 : hours,
   );
 
-  return result;
+  return adjustedDate;
 };
 
 /**
- * Parse time string into hours and minutes object
+ * Convert time string to structured time object
  */
-export const parseTimeString = timeString => {
+export const deconstructTimeString = timeString => {
   if (!timeString) {
     return {hours: 0, minutes: 0};
   }
@@ -141,18 +147,24 @@ export const parseTimeString = timeString => {
   return {hours: Number(hours), minutes: Number(minutes)};
 };
 
-// Check if current time falls within schedule hours
-export const isTimeInRange = (schedule, currentTime) => {
-  if (!schedule?.start_time || !schedule?.end_time || !currentTime) {
+// Verify if current moment falls within operational hours
+export const isWithinOperatingHours = (operationalSchedule, currentTime) => {
+  if (
+    !operationalSchedule?.start_time ||
+    !operationalSchedule?.end_time ||
+    !currentTime
+  ) {
     return false;
   }
 
-  const startTime = parseTimeString(schedule.start_time);
-  const endTime = parseTimeString(schedule.end_time);
+  const startTime = deconstructTimeString(operationalSchedule.start_time);
+  const endTime = deconstructTimeString(operationalSchedule.end_time);
   const time =
     typeof currentTime === 'object' && currentTime.hours !== undefined
       ? currentTime
-      : parseTimeString(format(new Date(), DATE_FORMATS.TIME_24H));
+      : deconstructTimeString(
+          format(new Date(), DISPLAY_FORMATS.TWENTY_FOUR_HOUR),
+        );
 
   if (time.hours < startTime.hours || time.hours > endTime.hours) {
     return false;
@@ -169,38 +181,38 @@ export const isTimeInRange = (schedule, currentTime) => {
   return true;
 };
 
-// Date comparison helpers
+// Date comparison and validation helpers
 
-// Check if date is today
-export const isTodayInTimeZone = (date, timeZone = TIME_ZONES.NYC) => {
+// Verify if date represents today in specified timezone
+export const isCurrentDay = (date, timezone = SUPPORTED_TIMEZONES.NEW_YORK) => {
   if (!date) return false;
 
-  const targetDate = parseDate(date);
+  const targetDate = parseDateSafely(date);
   return targetDate ? isToday(targetDate) : false;
 };
 
-// Check if date is tomorrow
-export const isTomorrowInTimeZone = (date, timeZone = TIME_ZONES.NYC) => {
+// Verify if date represents tomorrow in specified timezone
+export const isNextDay = (date, timezone = SUPPORTED_TIMEZONES.NEW_YORK) => {
   if (!date) return false;
 
-  const targetDate = parseDate(date);
+  const targetDate = parseDateSafely(date);
   return targetDate ? isTomorrow(targetDate) : false;
 };
 
-// Check if two dates are the same day
-export const isSameDateInTimeZone = (
-  dateLeft,
-  dateRight,
-  timeZone = TIME_ZONES.NYC,
+// Compare if two dates represent the same day
+export const areDatesEqual = (
+  firstDate,
+  secondDate,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
 ) => {
-  if (!dateLeft || !dateRight) return false;
+  if (!firstDate || !secondDate) return false;
 
-  const parsedLeft = parseDate(dateLeft);
-  const parsedRight = parseDate(dateRight);
+  const parsedFirst = parseDateSafely(firstDate);
+  const parsedSecond = parseDateSafely(secondDate);
 
-  if (!parsedLeft || !parsedRight) return false;
+  if (!parsedFirst || !parsedSecond) return false;
 
-  return isSameDay(parsedLeft, parsedRight);
+  return isSameDay(parsedFirst, parsedSecond);
 };
 
 // Formatting functions
@@ -208,12 +220,12 @@ export const isSameDateInTimeZone = (
 // Format date for display
 export const formatDateInTimezone = (
   date,
-  timezone = TIME_ZONES.NYC,
-  formatStr = DATE_FORMATS.DISPLAY_DATE,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+  formatStr = DISPLAY_FORMATS.COMPACT_DATE,
 ) => {
   if (!isValidDate(date)) return null;
 
-  const parsedDate = parseDate(date);
+  const parsedDate = parseDateSafely(date);
   if (!parsedDate) return null;
 
   return format(parsedDate, formatStr, {locale: enUS});
@@ -222,15 +234,17 @@ export const formatDateInTimezone = (
 // Format time for display
 export const formatTimeInTimezone = (
   date,
-  timezone = TIME_ZONES.NYC,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
   format12h = true,
 ) => {
   if (!isValidDate(date)) return null;
 
-  const parsedDate = parseDate(date);
+  const parsedDate = parseDateSafely(date);
   if (!parsedDate) return null;
 
-  const formatStr = format12h ? DATE_FORMATS.TIME_12H : DATE_FORMATS.TIME_24H;
+  const formatStr = format12h
+    ? DISPLAY_FORMATS.TWELVE_HOUR
+    : DISPLAY_FORMATS.TWENTY_FOUR_HOUR;
   return format(parsedDate, formatStr, {locale: enUS});
 };
 
@@ -250,8 +264,8 @@ export const isValidDate = date => {
   return false;
 };
 
-// Parse different date formats safely
-export const parseDate = date => {
+// Date parsing with comprehensive validation
+export const parseDateSafely = date => {
   if (!date) return null;
 
   if (date instanceof Date) {
@@ -281,7 +295,7 @@ export const getNextDateForDayOfWeek = (
 // Generate available dates based on business hours
 export const getNextAvailableDates = ({
   startDate = new Date(),
-  timeZone = TIME_ZONES.NYC,
+  timeZone = SUPPORTED_TIMEZONES.NEW_YORK,
   businessHours = [],
   businessHoursOverrides = [],
   datesCount = 7,
@@ -339,8 +353,8 @@ export const getNextAvailableDates = ({
 /**
  * Get user-friendly date label (Today, Tomorrow, or formatted date)
  */
-export const getDateLabel = (date, timezone = TIME_ZONES.NYC) => {
-  const parsedDate = parseDate(date);
+export const getDateLabel = (date, timezone = SUPPORTED_TIMEZONES.NEW_YORK) => {
+  const parsedDate = parseDateSafely(date);
   if (!parsedDate) return 'Invalid Date';
 
   if (isToday(parsedDate)) return 'Today';
@@ -349,15 +363,15 @@ export const getDateLabel = (date, timezone = TIME_ZONES.NYC) => {
   return format(parsedDate, 'EEE, MMM d');
 };
 
-// Main scheduling system - generates time slots for multiple days
-export const generateSchedule = ({
+// Scheduling engine for availability generation
+export const buildAvailabilitySchedule = ({
   currentDate = new Date(),
-  prepTimeInMinutes = DEFAULT_PREP_TIME_IN_MINUTES,
-  timeZone = TIME_ZONES.NYC,
+  prepTimeInMinutes = PREPARATION_TIME_DEFAULT,
+  timeZone = SUPPORTED_TIMEZONES.NEW_YORK,
   dates = [],
   businessHours = [],
   businessHoursOverrides = [],
-  gapInMinutes = TIME_INTERVALS.MINUTES_15,
+  gapInMinutes = SLOT_INTERVALS.QUARTER_HOUR,
 }) => {
   return dates
     .map(date => {
@@ -388,12 +402,12 @@ export const generateSchedule = ({
 
       const slots = selectedBusinessHours
         .map((businessHour, index) => {
-          const shiftStartDate = setHmOnDate(
+          const shiftStartDate = applyTimeToDate(
             date,
             businessHour.startTime || businessHour.start_time,
             timeZone,
           );
-          const shiftEndDate = setHmOnDate(
+          const shiftEndDate = applyTimeToDate(
             date,
             businessHour.endTime || businessHour.end_time,
             timeZone,
@@ -429,7 +443,7 @@ export const generateSchedule = ({
           );
 
           // Apply prep time logic for current day
-          if (isTodayInTimeZone(date, timeZone)) {
+          if (isCurrentDay(date, timeZone)) {
             const currentTimeWithPrep = addMinutes(
               Math.max(currentDate, storeTimes.openingTime || shiftStartDate),
               prepTimeInMinutes,
@@ -497,13 +511,13 @@ export const generateSchedule = ({
 // Legacy functions for backward compatibility
 
 // Simple time slot generator
-export const generateTimeSlots = (
+export const createBookingTimeSlots = (
   startTime,
   endTime,
-  intervalMinutes = TIME_INTERVALS.MINUTES_15,
-  timezone = TIME_ZONES.NYC,
+  intervalMinutes = SLOT_INTERVALS.QUARTER_HOUR,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
 ) => {
-  console.log(`🚀 generateTimeSlots called with:`, {
+  console.log(`🚀 createBookingTimeSlots called with:`, {
     startTime,
     endTime,
     intervalMinutes,
@@ -546,10 +560,10 @@ export const generateTimeSlots = (
   const slots = intervalDates
     .filter(date => isBefore(date, end)) // Exclude end time
     .map(date => ({
-      time24: format(date, DATE_FORMATS.TIME_24H),
-      time12: format(date, DATE_FORMATS.TIME_12H),
-      display: format(date, DATE_FORMATS.TIME_12H),
-      value: format(date, DATE_FORMATS.TIME_24H),
+      time24: format(date, DISPLAY_FORMATS.TWENTY_FOUR_HOUR),
+      time12: format(date, DISPLAY_FORMATS.TWELVE_HOUR),
+      display: format(date, DISPLAY_FORMATS.TWELVE_HOUR),
+      value: format(date, DISPLAY_FORMATS.TWENTY_FOUR_HOUR),
     }));
 
   console.log(
@@ -569,8 +583,12 @@ export const generateUpcomingDates = (count = 30, startDate = new Date()) => {
   }
   return dates;
 };
-export const isTimeSlotPast = (date, timeSlot, timezone = TIME_ZONES.NYC) => {
-  const parsedDate = parseDate(date);
+export const isTimeSlotPast = (
+  date,
+  timeSlot,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
+  const parsedDate = parseDateSafely(date);
   if (!parsedDate || !timeSlot) return false;
 
   try {
@@ -597,7 +615,7 @@ export const isTimeSlotPast = (date, timeSlot, timezone = TIME_ZONES.NYC) => {
     );
 
     // Get current time
-    const now = getCurrentTimeInTimezone(timezone);
+    const now = getNowInTimezone(timezone);
 
     // Compare using date-fns
     return isBefore(slotDateTime, now);
@@ -612,7 +630,7 @@ export const isTimeSlotPast = (date, timeSlot, timezone = TIME_ZONES.NYC) => {
  */
 export const formatTimeSlotDisplay = (
   timeSlot,
-  timezone = TIME_ZONES.NYC,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
   showTimezone = true,
   targetTimezone = null,
 ) => {
@@ -633,7 +651,7 @@ export const formatTimeSlotDisplay = (
   if (formattedTime.includes(':') && formattedTime.length <= 5) {
     const [hour, minute] = formattedTime.split(':').map(Number);
     const date = setHours(setMinutes(new Date(), minute), hour);
-    formattedTime = format(date, DATE_FORMATS.TIME_12H);
+    formattedTime = format(date, DISPLAY_FORMATS.TWELVE_HOUR);
   }
 
   if (!showTimezone) return formattedTime;
@@ -641,9 +659,9 @@ export const formatTimeSlotDisplay = (
   // Use target timezone for display if provided
   const displayTimezone = targetTimezone || timezone;
   const suffix =
-    displayTimezone === TIME_ZONES.NYC
+    displayTimezone === SUPPORTED_TIMEZONES.NEW_YORK
       ? 'NYC'
-      : displayTimezone === TIME_ZONES.UTC
+      : displayTimezone === SUPPORTED_TIMEZONES.UTC
       ? 'UTC'
       : 'Local';
   return `${formattedTime} ${suffix}`;
@@ -652,11 +670,13 @@ export const formatTimeSlotDisplay = (
 /**
  * Get greeting message based on time and timezone
  */
-export const getGreetingMessage = (timezone = TIME_ZONES.NYC) => {
-  const now = getCurrentTimeInTimezone(timezone);
+export const getGreetingMessage = (timezone = SUPPORTED_TIMEZONES.NEW_YORK) => {
+  const now = getNowInTimezone(timezone);
   const hour = getHours(now);
   const cityName =
-    timezone === TIME_ZONES.NYC ? 'NYC' : getCityFromTimezone(timezone);
+    timezone === SUPPORTED_TIMEZONES.NEW_YORK
+      ? 'NYC'
+      : getCityFromTimezone(timezone);
 
   if (hour >= 5 && hour <= 9) return `Good Morning, ${cityName}!`;
   if (hour >= 10 && hour <= 11) return `Late Morning Vibes! ${cityName}`;
@@ -669,7 +689,7 @@ export const getGreetingMessage = (timezone = TIME_ZONES.NYC) => {
  * Extract city name from timezone
  */
 export const getCityFromTimezone = timezone => {
-  if (timezone === TIME_ZONES.NYC) return 'NYC';
+  if (timezone === SUPPORTED_TIMEZONES.NEW_YORK) return 'NYC';
 
   try {
     const parts = timezone.split('/');
@@ -684,7 +704,7 @@ export const getCityFromTimezone = timezone => {
 export const filterMenusFromSchedule = ({
   schedule = [],
   menus = [],
-  timeZone = TIME_ZONES.NYC,
+  timeZone = SUPPORTED_TIMEZONES.NEW_YORK,
 }) => {
   return schedule
     .map(daySchedule => ({
@@ -714,7 +734,7 @@ export const filterMenusFromSchedule = ({
           }
 
           // Only show slot if it falls within the configured time range
-          return isTimeInRange(daySchedule, slotTime);
+          return isWithinOperatingHours(daySchedule, slotTime);
         });
       }),
     }))
@@ -725,11 +745,11 @@ export const filterMenusFromSchedule = ({
 export const generateLocationFulfillmentSchedule = ({
   startDate = new Date(),
   currentDate = new Date(),
-  prepTimeInMinutes = DEFAULT_PREP_TIME_IN_MINUTES,
+  prepTimeInMinutes = PREPARATION_TIME_DEFAULT,
   location,
   fulfillmentPreference = 'pickup',
   businessHoursOverrides = [],
-  gapInMinutes = TIME_INTERVALS.MINUTES_15,
+  gapInMinutes = SLOT_INTERVALS.QUARTER_HOUR,
   daysCount = 7,
   endDate = null,
 }) => {
@@ -748,15 +768,15 @@ export const generateLocationFulfillmentSchedule = ({
     businessHours: mockBusinessHours,
     businessHoursOverrides:
       businessHoursOverrides?.[location?.location_id] || [],
-    timeZone: location?.timezone || TIME_ZONES.NYC,
+    timeZone: location?.timezone || SUPPORTED_TIMEZONES.NEW_YORK,
     datesCount: daysCount,
     endDate,
   });
 
-  const schedule = generateSchedule({
+  const schedule = buildAvailabilitySchedule({
     currentDate: roundToNearestMinutes(currentDate, {nearestTo: gapInMinutes}),
     prepTimeInMinutes,
-    timeZone: location?.timezone || TIME_ZONES.NYC,
+    timeZone: location?.timezone || SUPPORTED_TIMEZONES.NEW_YORK,
     dates,
     businessHours: mockBusinessHours,
     businessHoursOverrides:
@@ -768,7 +788,11 @@ export const generateLocationFulfillmentSchedule = ({
 };
 
 // Date utilities
-export const addDaysInTimeZone = (date, days, timeZone = TIME_ZONES.NYC) => {
+export const addDaysInTimeZone = (
+  date,
+  days,
+  timeZone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
   // For React Native compatibility, we use simple date addition
   // In a full enterprise implementation, this would handle DST transitions
   return addDays(date, days);
@@ -853,7 +877,7 @@ export const convertTimeBetweenTimezones = (time, fromTimezone, toTimezone) => {
     }
 
     // Format back to HH:mm using date-fns
-    return format(convertedDate, DATE_FORMATS.TIME_24H);
+    return format(convertedDate, DISPLAY_FORMATS.TWENTY_FOUR_HOUR);
   } catch (error) {
     console.error('Timezone conversion error:', error, {
       time,
@@ -867,7 +891,10 @@ export const convertTimeBetweenTimezones = (time, fromTimezone, toTimezone) => {
 // Get timezone offset in hours from UTC
 const getTimezoneOffsetHours = timezone => {
   try {
-    if (timezone === TIME_ZONES.NYC || timezone === 'America/New_York') {
+    if (
+      timezone === SUPPORTED_TIMEZONES.NEW_YORK ||
+      timezone === 'America/New_York'
+    ) {
       // NYC is UTC-5 (EST) or UTC-4 (EDT) depending on DST
       // For simplicity in this React Native app, we'll use a fixed calculation
       // In production, you'd use a proper timezone library
@@ -879,9 +906,12 @@ const getTimezoneOffsetHours = timezone => {
       // DST typically runs from second Sunday in March to first Sunday in November
       const isDST = month > 2 && month < 10; // April to October (rough approximation)
       return isDST ? -4 : -5; // EDT is UTC-4, EST is UTC-5
-    } else if (timezone === TIME_ZONES.UTC || timezone === 'UTC') {
+    } else if (
+      timezone === SUPPORTED_TIMEZONES.COORDINATED_UNIVERSAL ||
+      timezone === 'UTC'
+    ) {
       return 0; // UTC has no offset
-    } else if (timezone === TIME_ZONES.LOCAL) {
+    } else if (timezone === SUPPORTED_TIMEZONES.USER_DEVICE) {
       // Get local timezone offset using native Date
       const now = new Date();
       return -now.getTimezoneOffset() / 60; // getTimezoneOffset returns negative values for positive offsets
@@ -896,10 +926,13 @@ const getTimezoneOffsetHours = timezone => {
 };
 
 // Calculate time until a target time
-export const getTimeUntil = (targetTime, timezone = TIME_ZONES.NYC) => {
+export const getTimeUntil = (
+  targetTime,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
   if (!targetTime) return null;
 
-  const now = getCurrentTimeInTimezone(timezone);
+  const now = getNowInTimezone(timezone);
   const [hour, minute] = targetTime.split(':').map(Number);
 
   const target = setHours(setMinutes(new Date(now), minute), hour);
@@ -913,11 +946,14 @@ export const getTimeUntil = (targetTime, timezone = TIME_ZONES.NYC) => {
 };
 
 // Check if store is open right now
-export const isStoreCurrentlyOpen = (storeHours, timezone = TIME_ZONES.NYC) => {
+export const isStoreCurrentlyOpen = (
+  storeHours,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
   if (!storeHours || !storeHours.is_open) return false;
 
   const now = new Date();
-  const currentTime = format(now, DATE_FORMATS.TIME_24H);
+  const currentTime = format(now, DISPLAY_FORMATS.TWENTY_FOUR_HOUR);
 
   return (
     currentTime >= storeHours.start_time && currentTime <= storeHours.end_time
@@ -925,7 +961,10 @@ export const isStoreCurrentlyOpen = (storeHours, timezone = TIME_ZONES.NYC) => {
 };
 
 // Get when the store opens next
-export const getNextStoreOpening = (storeHours, timezone = TIME_ZONES.NYC) => {
+export const getNextStoreOpening = (
+  storeHours,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
   if (!storeHours || !storeHours.start_time) return null;
 
   const now = new Date();
@@ -945,10 +984,10 @@ export const getNextStoreOpening = (storeHours, timezone = TIME_ZONES.NYC) => {
 export const formatAppointmentDateTime = (
   date,
   timeSlot,
-  timezone = TIME_ZONES.NYC,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
   targetTimezone = null,
 ) => {
-  const parsedDate = parseDate(date);
+  const parsedDate = parseDateSafely(date);
   if (!parsedDate || !timeSlot) return 'Invalid appointment time';
 
   const dateStr = getDateLabel(parsedDate, targetTimezone || timezone);

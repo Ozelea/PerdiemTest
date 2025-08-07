@@ -1,4 +1,4 @@
-import {getCurrentTimeInTimezone, TIME_ZONES} from './DateTimeUtils';
+import {getNowInTimezone, SUPPORTED_TIMEZONES} from './DateTimeUtils';
 
 /**
  * Professional greeting system with dynamic messaging
@@ -55,7 +55,7 @@ const getTimePeriod = hour => {
  */
 export const generateGreeting = (options = {}) => {
   const {
-    timezone = TIME_ZONES.NYC,
+    timezone = SUPPORTED_TIMEZONES.NEW_YORK,
     style = 'primary',
     includeName = false,
     userName = null,
@@ -63,7 +63,7 @@ export const generateGreeting = (options = {}) => {
     customLocation = null,
   } = options;
 
-  const now = getCurrentTimeInTimezone(timezone);
+  const now = getNowInTimezone(timezone);
   const hour = now.getHours();
   const period = getTimePeriod(hour);
 
@@ -91,9 +91,9 @@ export const generateGreeting = (options = {}) => {
  */
 const getCityDisplayName = timezone => {
   switch (timezone) {
-    case TIME_ZONES.NYC:
+    case SUPPORTED_TIMEZONES.NEW_YORK:
       return 'NYC';
-    case TIME_ZONES.UTC:
+    case SUPPORTED_TIMEZONES.COORDINATED_UNIVERSAL:
       return 'UTC';
     default:
       try {
@@ -111,7 +111,7 @@ const getCityDisplayName = timezone => {
  */
 export const getAppointmentGreeting = (
   appointmentCount = 0,
-  timezone = TIME_ZONES.NYC,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
 ) => {
   const baseGreeting = generateGreeting({
     timezone,
@@ -133,7 +133,10 @@ export const getAppointmentGreeting = (
 /**
  * Get greeting based on user action context
  */
-export const getContextualGreeting = (context, timezone = TIME_ZONES.NYC) => {
+export const getContextualGreeting = (
+  context,
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
   const baseGreeting = generateGreeting({
     timezone,
     style: 'primary',
@@ -157,8 +160,10 @@ export const getContextualGreeting = (context, timezone = TIME_ZONES.NYC) => {
 /**
  * Get time-sensitive motivational message
  */
-export const getMotivationalMessage = (timezone = TIME_ZONES.NYC) => {
-  const now = getCurrentTimeInTimezone(timezone);
+export const getMotivationalMessage = (
+  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
+) => {
+  const now = getNowInTimezone(timezone);
   const hour = now.getHours();
 
   if (hour >= 5 && hour < 10) {

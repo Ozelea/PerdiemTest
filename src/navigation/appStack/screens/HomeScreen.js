@@ -29,8 +29,8 @@ import {
 import {
   formatAppointmentDateTime,
   formatTimeSlotDisplay,
-  TIME_ZONES,
-  parseDate,
+  SUPPORTED_TIMEZONES,
+  parseDateSafely,
 } from '../../../utils/DateTimeUtils';
 import {
   handleTimeSlotSelection,
@@ -48,7 +48,7 @@ export default function HomeScreen() {
   const [timezone, setTimezone] = useMMKVStorage(
     'timezone',
     Storage,
-    TIME_ZONES.NYC,
+    SUPPORTED_TIMEZONES.NEW_YORK,
   );
   const [pendingDate, setPendingDate] = useState(new Date());
   const [userAppointment, setUserAppointment] = useState(null);

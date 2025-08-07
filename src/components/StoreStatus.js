@@ -10,10 +10,10 @@ import {
   isStoreCurrentlyOpen,
   getNextStoreOpening,
   formatTimeInTimezone,
-  TIME_ZONES,
+  SUPPORTED_TIMEZONES,
 } from '../utils/DateTimeUtils';
 
-const StoreStatus = ({timezone = TIME_ZONES.NYC}) => {
+const StoreStatus = ({timezone = SUPPORTED_TIMEZONES.NEW_YORK}) => {
   const [storeTimes, setStoreTimes] = useState([]);
   const [storeOverrides, setStoreOverrides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +109,8 @@ const StoreStatus = ({timezone = TIME_ZONES.NYC}) => {
   return (
     <View style={styles.storeSection}>
       <Text style={styles.sectionTitle}>
-        Store Status ({timezone === TIME_ZONES.NYC ? 'NYC Time' : 'Local Time'})
+        Store Status (
+        {timezone === SUPPORTED_TIMEZONES.NEW_YORK ? 'NYC Time' : 'Local Time'})
       </Text>
       <View style={styles.storeStatus}>
         <View

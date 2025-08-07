@@ -1,8 +1,8 @@
 import {
   isValidDate,
-  parseDate,
-  getCurrentTimeInTimezone,
-  TIME_ZONES,
+  parseDateSafely,
+  getNowInTimezone,
+  SUPPORTED_TIMEZONES,
 } from './DateTimeUtils';
 import {isAfter, isBefore, startOfDay, endOfDay} from 'date-fns';
 
@@ -60,7 +60,7 @@ export const createValidationResult = (
  */
 export const validateAppointmentDate = (date, options = {}) => {
   const {
-    timezone = TIME_ZONES.NYC,
+    timezone = SUPPORTED_TIMEZONES.NEW_YORK,
     maxDaysAhead = 30,
     allowWeekends = true,
   } = options;
@@ -79,8 +79,8 @@ export const validateAppointmentDate = (date, options = {}) => {
     return createValidationResult(false, VALIDATION_ERRORS.INVALID_DATE);
   }
 
-  const parsedDate = parseDate(date);
-  const now = getCurrentTimeInTimezone(timezone);
+  const parsedDate = parseDateSafely(date);
+  const now = getNowInTimezone(timezone);
   const today = startOfDay(now);
   const selectedDay = startOfDay(parsedDate);
 
@@ -113,7 +113,7 @@ export const validateAppointmentDate = (date, options = {}) => {
  */
 export const validateTimeSlot = (timeSlot, date, options = {}) => {
   const {
-    timezone = TIME_ZONES.NYC,
+    timezone = SUPPORTED_TIMEZONES.NEW_YORK,
     storeHours = null,
     bookedSlots = [],
   } = options;
@@ -133,7 +133,7 @@ export const validateTimeSlot = (timeSlot, date, options = {}) => {
     return createValidationResult(false, VALIDATION_ERRORS.INVALID_TIME);
   }
 
-  const parsedDate = parseDate(date);
+  const parsedDate = parseDateSafely(date);
   if (!parsedDate) {
     return createValidationResult(
       false,
@@ -147,7 +147,7 @@ export const validateTimeSlot = (timeSlot, date, options = {}) => {
   const appointmentDateTime = new Date(parsedDate);
   appointmentDateTime.setHours(hour, minute, 0, 0);
 
-  const now = getCurrentTimeInTimezone(timezone);
+  const now = getNowInTimezone(timezone);
 
   // Check if time is in the past
   if (isBefore(appointmentDateTime, now)) {
@@ -178,7 +178,7 @@ export const validateTimeSlot = (timeSlot, date, options = {}) => {
  */
 export const validateAppointmentBooking = (appointmentData, options = {}) => {
   const {
-    timezone = TIME_ZONES.NYC,
+    timezone = SUPPORTED_TIMEZONES.NEW_YORK,
     storeHours = null,
     bookedSlots = [],
     maxDaysAhead = 30,
