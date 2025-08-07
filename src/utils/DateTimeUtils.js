@@ -1,4 +1,3 @@
-import {Platform} from 'react-native';
 import {
   format,
   addDays,
@@ -6,7 +5,6 @@ import {
   addHours,
   compareAsc,
   eachMinuteOfInterval,
-  endOfWeek,
   isAfter,
   isBefore,
   isToday,
@@ -17,17 +15,12 @@ import {
   setHours,
   setMinutes,
   startOfDay,
-  startOfWeek,
   formatDistanceToNow,
   getDay,
   getMonth,
   getDate,
   getHours,
   getMinutes,
-  setDate,
-  isSameDay,
-  isSameMonth,
-  parse,
 } from 'date-fns';
 import {enUS} from 'date-fns/locale';
 
@@ -42,29 +35,18 @@ export const SUPPORTED_TIMEZONES = {
 };
 
 export const DISPLAY_FORMATS = {
-  LONG_DATE: 'EEEE, MMMM d, yyyy',
+  SHORT_DATE: 'MMM d, yyyy',
+  NUMERIC_DATE: 'MM/dd/yyyy',
   COMPACT_DATE: 'MMM d',
   TWELVE_HOUR: 'h:mm a',
   TWENTY_FOUR_HOUR: 'HH:mm',
-  ISO_STANDARD: 'yyyy-MM-dd',
-  COMPLETE_DATETIME: 'yyyy-MM-dd HH:mm:ss',
-  API_TIMESTAMP: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
 };
 
 export const SLOT_INTERVALS = {
   QUARTER_HOUR: 15,
-  HALF_HOUR: 30,
-  FULL_HOUR: 60,
 };
 
 export const PREPARATION_TIME_DEFAULT = 15;
-
-export const STORE_CONFIGURATION = {
-  OPENING_TIME: '09:00',
-  CLOSING_TIME: '18:00',
-  SETUP_DURATION: 15,
-  BOOKING_INTERVAL: 15,
-};
 
 // Timezone-aware time retrieval utilities
 
@@ -199,22 +181,6 @@ export const isNextDay = (date, timezone = SUPPORTED_TIMEZONES.NEW_YORK) => {
   return targetDate ? isTomorrow(targetDate) : false;
 };
 
-// Compare if two dates represent the same day
-export const areDatesEqual = (
-  firstDate,
-  secondDate,
-  timezone = SUPPORTED_TIMEZONES.NEW_YORK,
-) => {
-  if (!firstDate || !secondDate) return false;
-
-  const parsedFirst = parseDateSafely(firstDate);
-  const parsedSecond = parseDateSafely(secondDate);
-
-  if (!parsedFirst || !parsedSecond) return false;
-
-  return isSameDay(parsedFirst, parsedSecond);
-};
-
 // Formatting functions
 
 // Format date for display
@@ -281,16 +247,6 @@ export const parseDateSafely = date => {
 };
 
 // Business logic and scheduling
-
-// Get next occurrence of a specific day of the week
-export const getNextDateForDayOfWeek = (
-  targetDayIndex,
-  referenceDate = new Date(),
-) => {
-  const currentDayIndex = getDay(referenceDate);
-  const daysUntilTarget = (targetDayIndex - currentDayIndex + 7) % 7;
-  return addDays(referenceDate, daysUntilTarget);
-};
 
 // Generate available dates based on business hours
 export const getNextAvailableDates = ({
@@ -785,17 +741,6 @@ export const generateLocationFulfillmentSchedule = ({
   });
 
   return schedule;
-};
-
-// Date utilities
-export const addDaysInTimeZone = (
-  date,
-  days,
-  timeZone = SUPPORTED_TIMEZONES.NEW_YORK,
-) => {
-  // For React Native compatibility, we use simple date addition
-  // In a full enterprise implementation, this would handle DST transitions
-  return addDays(date, days);
 };
 
 // Get user's device timezone
