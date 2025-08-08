@@ -15,16 +15,11 @@ import {
   SUPPORTED_TIMEZONES,
 } from './DateTimeUtils';
 
-// State management for notification service
 let isPermissionGranted = false;
 
-const onNotificationReceived = notification => {
-  // Handle notification received
-};
+const onNotificationReceived = notification => {};
 
-const onLocalNotificationReceived = notification => {
-  // Handle local notification received
-};
+const onLocalNotificationReceived = notification => {};
 
 const initializeNotifications = async () => {
   if (Platform.OS === 'ios') {
@@ -61,15 +56,8 @@ const requestPermissions = async () => {
 };
 
 const scheduleNotification = (title, message, delayInMinutes = 0) => {
-  console.log('🔔 scheduleNotification called:', {
-    title,
-    message,
-    delayInMinutes,
-  });
-
   if (Platform.OS === 'ios') {
     const fireDate = addMinutes(new Date(), delayInMinutes);
-    console.log('📱 iOS notification scheduled for:', fireDate.toISOString());
 
     PushNotificationIOS.scheduleLocalNotification({
       alertTitle: title,
@@ -82,9 +70,7 @@ const scheduleNotification = (title, message, delayInMinutes = 0) => {
         scheduledAt: new Date().toISOString(),
       },
     });
-    console.log('✅ iOS notification scheduled successfully');
   } else {
-    // Fallback to Alert for non-iOS platforms during development
     setTimeout(() => {
       Alert.alert(
         title,
@@ -92,7 +78,7 @@ const scheduleNotification = (title, message, delayInMinutes = 0) => {
         [
           {
             text: 'OK',
-            onPress: () => console.log('Notification acknowledged'),
+            onPress: () => {},
             style: 'default',
           },
         ],
@@ -102,13 +88,12 @@ const scheduleNotification = (title, message, delayInMinutes = 0) => {
   }
 };
 
-// Schedule a test notification
 const scheduleTestNotification = async () => {
   try {
     scheduleNotification(
       'Test Notification',
       'This is a test notification from your appointment app!',
-      0.1, // 6 seconds delay for testing
+      0.1,
     );
     return {
       success: true,
@@ -123,33 +108,23 @@ const scheduleTestNotification = async () => {
   }
 };
 
-// Show test notification (alias for scheduleTestNotification)
 const showTestNotification = async () => {
   return scheduleTestNotification();
 };
 
-// Schedule store opening notification (1 hour before store opens)
 const scheduleStoreOpeningNotification = async (
   timezone = SUPPORTED_TIMEZONES.NEW_YORK,
 ) => {
   try {
-    console.log(
-      '🔔 NotificationService.scheduleStoreOpeningNotification called',
-    );
-    console.log('🌐 Timezone:', timezone);
-
     const storeHours = {
       is_open: true,
       start_time: '09:00',
       end_time: '17:00',
     };
-    console.log('🏪 Store hours:', storeHours);
 
     const nextOpening = getNextStoreOpening(storeHours, timezone);
-    console.log('⏰ Next opening calculated:', nextOpening);
 
     if (!nextOpening) {
-      console.log('❌ Could not determine next store opening time');
       return {
         success: false,
         message: 'Could not determine next store opening time',
@@ -157,14 +132,11 @@ const scheduleStoreOpeningNotification = async (
     }
 
     const now = getNowInTimezone(timezone);
-    console.log('🕐 Current time in timezone:', now);
 
-    const notificationTime = addMinutes(nextOpening, -60); // 1 hour before
-    console.log('📅 Notification time calculated:', notificationTime);
+    const notificationTime = addMinutes(nextOpening, -60);
 
     const delayInMinutes =
       (getTime(notificationTime) - getTime(now)) / (1000 * 60);
-    console.log('⏱️ Delay in minutes:', delayInMinutes);
 
     if (delayInMinutes > 0) {
       const notification = createSystemNotification(
@@ -173,14 +145,12 @@ const scheduleStoreOpeningNotification = async (
           timezone,
         )}. Get ready to book your appointment!`,
       );
-      console.log('📨 Notification created:', notification);
 
       scheduleNotification(
         notification.title,
         notification.body,
         delayInMinutes,
       );
-      console.log('✅ Notification scheduled successfully');
 
       Storage.setString('lastScheduledNotification', new Date().toISOString());
 
@@ -191,14 +161,12 @@ const scheduleStoreOpeningNotification = async (
         message: 'Store opening notification scheduled 1 hour before opening',
       };
     } else {
-      console.log('⚠️ Notification time has already passed for today');
       return {
         success: false,
         message: 'Notification time has already passed for today',
       };
     }
   } catch (error) {
-    console.error('🚨 scheduleStoreOpeningNotification error:', error);
     return {
       success: false,
       message: 'Failed to schedule store opening notification',
@@ -207,7 +175,6 @@ const scheduleStoreOpeningNotification = async (
   }
 };
 
-// Schedule appointment reminder
 const scheduleAppointmentReminder = async (
   appointmentDate,
   appointmentTime,
@@ -254,14 +221,12 @@ const scheduleAppointmentReminder = async (
   }
 };
 
-// Cancel all notifications
 const cancelAllNotifications = () => {
   if (Platform.OS === 'ios') {
     PushNotificationIOS.cancelAllLocalNotifications();
   }
 };
 
-// Get pending notifications
 const getPendingNotifications = async () => {
   if (Platform.OS === 'ios') {
     return new Promise(resolve => {
@@ -273,7 +238,6 @@ const getPendingNotifications = async () => {
   return [];
 };
 
-// Cleanup when service is destroyed
 const destroy = () => {
   if (Platform.OS === 'ios') {
     PushNotificationIOS.removeEventListener(
@@ -287,10 +251,8 @@ const destroy = () => {
   }
 };
 
-// Initialize the notification service
 initializeNotifications();
 
-// Export notification service functions
 const NotificationService = {
   requestPermissions,
   scheduleNotification,

@@ -43,7 +43,6 @@ import {
 } from '../../../utils/AppointmentInteractionUtils';
 
 export default function HomeScreen() {
-  console.log('🏠 HomeScreen component loading...');
   const [user, setUser] = useMMKVStorage('user', Storage);
   const [timezone, setTimezone] = useMMKVStorage(
     'timezone',
@@ -74,16 +73,10 @@ export default function HomeScreen() {
   }, [timezone]);
 
   useEffect(() => {
-    console.log(
-      '🔄 HomeScreen notification useEffect triggered with timezone:',
-      timezone,
-    );
     const initializeNotifications = async () => {
-      console.log('🚀 Calling setupNotificationSystem...');
       const result = await setupNotificationSystem(timezone, () =>
         scheduleStoreOpeningNotification(timezone),
       );
-      console.log('✅ setupNotificationSystem result:', result);
     };
 
     initializeNotifications();
@@ -92,12 +85,6 @@ export default function HomeScreen() {
   const greeting = useMemo(() => {
     const appointmentCount = userAppointment ? 1 : 0;
     const result = getAppointmentGreeting(appointmentCount, timezone);
-    console.log('🎯 Greeting updated:', {
-      timezone,
-      appointmentCount,
-      greeting: result,
-      timestamp: new Date().toISOString(),
-    });
     return result;
   }, [userAppointment, timezone]);
 

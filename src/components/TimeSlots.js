@@ -32,26 +32,15 @@ const TimeSlots = ({
   const fetchStoreData = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching store data from APIs...');
 
       const [timesData, overridesData] = await Promise.all([
         getStoreTimesWithFallback(false, false),
         getStoreOverridesWithFallback(false, false),
       ]);
 
-      console.log(
-        '📅 Store Times API Response (NYC timezone):',
-        JSON.stringify(timesData, null, 2),
-      );
-      console.log(
-        '🎯 Store Overrides API Response (NYC timezone):',
-        JSON.stringify(overridesData, null, 2),
-      );
-
       setStoreTimes(timesData || []);
       setStoreOverrides(overridesData || []);
     } catch (error) {
-      console.error('❌ Error fetching store data:', error);
       setStoreTimes([]);
       setStoreOverrides([]);
     } finally {
@@ -66,15 +55,6 @@ const TimeSlots = ({
     const selectedDay = date.getDate();
     const selectedMonth = date.getMonth() + 1;
 
-    console.log(`🗓️  Getting store hours for:`, {
-      date: date.toDateString(),
-      dayOfWeek,
-      selectedDay,
-      selectedMonth,
-      storeTimesCount: storeTimes.length,
-      storeOverridesCount: storeOverrides.length,
-    });
-
     // Check for date-specific overrides first
     const override = storeOverrides.find(
       override =>
@@ -82,10 +62,6 @@ const TimeSlots = ({
     );
 
     if (override) {
-      console.log(
-        `🎯 Found override for ${selectedDay}/${selectedMonth}:`,
-        override,
-      );
       if (!override.is_open) return null;
       if (
         override.start_time &&
@@ -106,8 +82,6 @@ const TimeSlots = ({
     const dayHours = storeTimes.find(
       storeTime => storeTime.day_of_week === dayOfWeek,
     );
-
-    console.log(`📆 Regular store hours for day ${dayOfWeek}:`, dayHours);
 
     if (!dayHours || !dayHours.is_open) return null;
 
@@ -134,19 +108,10 @@ const TimeSlots = ({
     }
 
     const storeHours = getStoreHoursForDate(selectedDate);
-    console.log(
-      `⏰ Store hours for ${selectedDate} (in NYC timezone):`,
-      storeHours,
-    );
 
     if (!storeHours) {
-      console.log('❌ No store hours found for date:', selectedDate);
       return [];
     }
-
-    console.log(
-      `🎯 Generating time slots from ${storeHours.start_time} to ${storeHours.end_time} for timezone: ${timezone}`,
-    );
 
     const slots = createBookingTimeSlots(
       storeHours.start_time,
@@ -155,19 +120,9 @@ const TimeSlots = ({
       timezone,
     );
 
-    console.log(
-      `📋 Generated ${slots.length} raw time slots:`,
-      slots.map(slot => slot.value),
-    );
-
     const availableSlots = AppointmentManager.filterAvailableTimeSlots(
       slots,
       selectedDate,
-    );
-
-    console.log(
-      `✅ Available slots after filtering:`,
-      availableSlots.map(slot => slot.value),
     );
 
     return availableSlots;

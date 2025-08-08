@@ -55,7 +55,6 @@ const saveAppointment = (date, timeSlot, timezone = 'America/New_York') => {
       wasReplaced: !!currentUserAppointment,
     };
   } catch (error) {
-    console.error('Error saving appointment:', error);
     return {success: false, error: error.message};
   }
 };
@@ -76,13 +75,11 @@ const clearUserAppointment = () => {
       // Clear user's appointment
       Storage.removeItem(USER_APPOINTMENT_KEY);
 
-      console.log('User appointment cleared:', currentUserAppointment.id);
       return {success: true, clearedAppointment: currentUserAppointment};
     }
 
     return {success: true, clearedAppointment: null};
   } catch (error) {
-    console.error('Error clearing user appointment:', error);
     return {success: false, error: error.message};
   }
 };
@@ -103,10 +100,8 @@ const removeAppointment = appointmentId => {
 
     Storage.setString(APPOINTMENT_KEY, JSON.stringify(filteredAppointments));
 
-    console.log('Appointment removed:', appointmentId);
     return {success: true};
   } catch (error) {
-    console.error('Error removing appointment:', error);
     return {success: false, error: error.message};
   }
 };
@@ -116,10 +111,8 @@ const clearAllAppointments = () => {
   try {
     Storage.removeItem(APPOINTMENT_KEY);
     Storage.removeItem(USER_APPOINTMENT_KEY);
-    console.log('All appointments cleared');
     return {success: true};
   } catch (error) {
-    console.error('Error clearing appointments:', error);
     return {success: false, error: error.message};
   }
 };
@@ -154,7 +147,6 @@ const isTimeSlotAvailable = (date, timeSlot) => {
 
     return !isBooked;
   } catch (error) {
-    console.error('Error checking time slot availability:', error);
     return true; // Default to available if there's an error
   }
 };
@@ -175,7 +167,6 @@ const getAppointmentsForDate = date => {
       );
     });
   } catch (error) {
-    console.error('Error getting appointments for date:', error);
     return [];
   }
 };
@@ -186,7 +177,6 @@ const getBookedTimeSlotsForDate = date => {
     const appointments = getAppointmentsForDate(date);
     return appointments.map(appointment => appointment.timeSlot);
   } catch (error) {
-    console.error('Error getting booked time slots for date:', error);
     return [];
   }
 };
@@ -202,7 +192,6 @@ const filterAvailableTimeSlots = (timeSlots, date) => {
       return !bookedTimeSlots.includes(slotTime);
     });
   } catch (error) {
-    console.error('Error filtering available time slots:', error);
     return timeSlots; // Return all slots if there's an error
   }
 };
@@ -238,7 +227,6 @@ const getUserAppointmentStats = () => {
           );
         }
       } catch (timeError) {
-        console.error('Error parsing appointment time:', timeError);
         // Fallback to date-only comparison if time parsing fails
         appointmentDateTime = aptDate;
       }
@@ -262,7 +250,6 @@ const getUserAppointmentStats = () => {
 
     return stats;
   } catch (error) {
-    console.error('Error getting user appointment stats:', error);
     return {
       hasAppointment: false,
       total: 0,
@@ -294,7 +281,6 @@ const getAppointmentStats = () => {
 
     return stats;
   } catch (error) {
-    console.error('Error getting appointment stats:', error);
     return {total: 0, confirmed: 0, upcoming: 0, past: 0};
   }
 };
@@ -317,7 +303,6 @@ const findAppointment = (date, timeSlot) => {
       );
     });
   } catch (error) {
-    console.error('Error finding appointment:', error);
     return null;
   }
 };
@@ -336,13 +321,11 @@ const updateAppointmentStatus = (appointmentId, newStatus) => {
 
       Storage.setString(APPOINTMENT_KEY, JSON.stringify(appointments));
 
-      console.log('Appointment status updated:', appointmentId, newStatus);
       return {success: true, appointment: appointments[appointmentIndex]};
     }
 
     return {success: false, error: 'Appointment not found'};
   } catch (error) {
-    console.error('Error updating appointment status:', error);
     return {success: false, error: error.message};
   }
 };

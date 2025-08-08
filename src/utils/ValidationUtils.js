@@ -6,10 +6,6 @@ import {
 } from './DateTimeUtils';
 import {isAfter, isBefore, startOfDay, endOfDay} from 'date-fns';
 
-// Validation utilities for appointment booking
-// Handles business logic validation with clear error messaging
-
-// Validation error types
 export const VALIDATION_ERRORS = {
   INVALID_DATE: 'INVALID_DATE',
   PAST_DATE: 'PAST_DATE',
@@ -24,7 +20,6 @@ export const VALIDATION_ERRORS = {
   INVALID_FORMAT: 'INVALID_FORMAT',
 };
 
-// User-friendly error messages
 export const ERROR_MESSAGES = {
   [VALIDATION_ERRORS.INVALID_DATE]: 'Please select a valid date.',
   [VALIDATION_ERRORS.PAST_DATE]: 'Please select a future date.',
@@ -65,7 +60,6 @@ export const validateAppointmentDate = (date, options = {}) => {
     allowWeekends = true,
   } = options;
 
-  // Check if date is provided
   if (!date) {
     return createValidationResult(
       false,
@@ -74,7 +68,6 @@ export const validateAppointmentDate = (date, options = {}) => {
     );
   }
 
-  // Validate date format
   if (!isValidDate(date)) {
     return createValidationResult(false, VALIDATION_ERRORS.INVALID_DATE);
   }
@@ -84,12 +77,10 @@ export const validateAppointmentDate = (date, options = {}) => {
   const today = startOfDay(now);
   const selectedDay = startOfDay(parsedDate);
 
-  // Check if date is in the past
   if (isBefore(selectedDay, today)) {
     return createValidationResult(false, VALIDATION_ERRORS.PAST_DATE);
   }
 
-  // Check if date is too far in the future
   const maxDate = new Date(today);
   maxDate.setDate(maxDate.getDate() + maxDaysAhead);
 
@@ -97,7 +88,6 @@ export const validateAppointmentDate = (date, options = {}) => {
     return createValidationResult(false, VALIDATION_ERRORS.TOO_FAR_AHEAD);
   }
 
-  // Check weekend restriction
   if (!allowWeekends) {
     const dayOfWeek = parsedDate.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {

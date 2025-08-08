@@ -30,21 +30,9 @@ apiClient.interceptors.request.use(
       config.headers['Content-Type'] = 'multipart/form-data';
     }
 
-    // Log request in development
-    if (__DEV__) {
-      console.log(
-        `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`,
-        {
-          headers: config.headers,
-          data: config.data,
-        },
-      );
-    }
-
     return config;
   },
   error => {
-    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   },
 );
@@ -52,52 +40,20 @@ apiClient.interceptors.request.use(
 // Response interceptor for error handling and logging
 apiClient.interceptors.response.use(
   response => {
-    // Log successful responses in development
-    if (__DEV__) {
-      console.log(
-        `✅ API Success: ${response.config.method?.toUpperCase()} ${
-          response.config.url
-        }`,
-        {
-          status: response.status,
-          data: response.data,
-        },
-      );
-    }
     return response;
   },
   error => {
-    // Log errors in development
-    if (__DEV__) {
-      console.error(
-        `❌ API Error: ${error.config?.method?.toUpperCase()} ${
-          error.config?.url
-        }`,
-        {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message,
-        },
-      );
-    }
-
-    // Handle different error scenarios
     if (error.response) {
-      // Server responded with error status
       const {status, statusText} = error.response;
 
-      // Allow 400 and 500 errors to pass through (as per original implementation)
       if (status === 400 || status === 500) {
         return Promise.resolve(error.response);
       }
 
       throw new Error(statusText || `Request failed with status ${status}`);
     } else if (error.request) {
-      // Request was made but no response received
       throw new Error('Network error - no response received');
     } else {
-      // Something else happened
       throw new Error(error.message || 'Request failed');
     }
   },
@@ -288,7 +244,6 @@ export const getStoreTimesWithFallback = async (
   try {
     return await getStoreTimes(token);
   } catch (error) {
-    console.log('APIController: API failed, using mock data for store times');
     return getMockStoreTimes();
   }
 };
@@ -305,9 +260,6 @@ export const getStoreOverridesWithFallback = async (
   try {
     return await getStoreOverrides(token);
   } catch (error) {
-    console.log(
-      'APIController: API failed, using mock data for store overrides',
-    );
     return getMockStoreOverrides();
   }
 };
